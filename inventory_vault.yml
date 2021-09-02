@@ -1,0 +1,4 @@
+---
+plugin: inventory_vault
+vault_mount_point: <kv mount>
+vault_secret_path: <secret path used for inventory>
