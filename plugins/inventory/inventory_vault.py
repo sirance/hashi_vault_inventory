@@ -13,7 +13,7 @@ DOCUMENTATION = '''
     notes:
         - "Dynamic inventory plugin as per https://docs.ansible.com/ansible/2.10/dev_guide/developing_inventory.html"
         - ""
-        - "Env vars 'VAULT_TOKEN', 'VAULT_URL', 'VAULT_AUTH' and 'VAULT_CERT' must be set for this inventory to work."
+        - "Env vars 'VAULT_TOKEN', 'VAULT_ADDR', and 'VAULT_CERT' must be set for this inventory to work."
         - ""
         - "To use this please create a inventory yaml in your repo names 'inventory_vault.yml' with the following example data:"
         - "---"
@@ -54,16 +54,16 @@ class InventoryModule(BaseInventoryPlugin):
         super(InventoryModule, self).parse(inventory, loader, path, cache)
 
         # Check env vars are set correctly
-        vault_url = os.environ.get('VAULT_URL')
+        vault_url = os.environ.get('VAULT_ADDR')
         vault_token = os.environ.get('VAULT_TOKEN')
         vault_cert = os.environ.get('VAULT_CERT')
         
 
         if vault_url is None:
-            raise AnsibleParserError("Please ensure VAULT_URL is set in your environment")
+            raise AnsibleParserError("Please ensure VAULT_ADDR is set in your environment")
 
         if vault_token is None:
-            raise AnsibleParserError("Please ensure VAULT_AUTH is set in your environment")
+            raise AnsibleParserError("Please ensure VAULT_TOKEN is set in your environment")
 
         if vault_cert is None:
             raise AnsibleParserError("Please ensure VAULT_CERT is set in your environment")
