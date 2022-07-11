@@ -6,7 +6,7 @@ DOCUMENTATION = '''
     inventory: inventory_vault.py
     author: 
         - Simon Rance <sirance@gmail.com>
-    version_added: "1.2"
+    version_added: "1.0.2"
     short_description: Dynamic inventory for using vault with ansible
     description:
         - This inventory uses vault and reads from a KV2 path
