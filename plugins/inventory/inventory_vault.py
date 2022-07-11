@@ -6,7 +6,7 @@ DOCUMENTATION = '''
     inventory: inventory_vault.py
     author: 
         - Simon Rance <sirance@gmail.com>
-    version_added: "1.1"
+    version_added: "1.2"
     short_description: Dynamic inventory for using vault with ansible
     description:
         - This inventory uses vault and reads from a KV2 path
@@ -29,6 +29,7 @@ from ansible.utils.display import Display
 
 import os
 import hvac
+import certifi
 import requests
 import yaml
 
@@ -73,29 +74,25 @@ class InventoryModule(BaseInventoryPlugin):
         if config.get('vault_secret_path', None) is None:
             raise AnsibleParserError("Please ensure 'vault_secret_path' is set in your inventory_pac.yml")
 
-
+        # Test for SSL errors, and add custom CA to certifi if errors are raised:
+                try:
+            test = requests.get(vault_url)
+        except requests.exceptions.SSLError as err:
+            cafile = certifi.where()
+            with open(vault_cert, 'rb') as infile:
+                customca = infile.read()
+            with open(cafile, 'ab') as outfile:
+                outfile.write(customca)
+                
         # Connect to vault
         vault_client = hvac.Client(
         url=vault_url,
         )
-        if vault_cert:
-        # When use a self-signed certificate for the vault service itself, we need to
-        # include our local ca bundle here for the underlying requests module.
-                rs = requests.Session()
-                vault_client.session = rs
-                rs.verify = vault_cert
-
-        # login_response = vault_client.auth.ldap.login(
-        #     username=vault_user,
-        #     password=vault_pass,
-        # )
-        # vault_client.token = load_vault_token(vault_client)
         vault_client.token = vault_token
 
         if not vault_client.is_authenticated():
                 error_msg = 'Unable to authenticate to the Vault service'
                 raise hvac.exceptions.Unauthorized(error_msg)
-
 
         config_vault_mount_point = config['vault_mount_point']
         config_vault_secret_path = config['vault_secret_path']
