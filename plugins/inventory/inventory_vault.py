@@ -75,7 +75,7 @@ class InventoryModule(BaseInventoryPlugin):
             raise AnsibleParserError("Please ensure 'vault_secret_path' is set in your inventory_pac.yml")
 
         # Test for SSL errors, and add custom CA to certifi if errors are raised:
-                try:
+        try:
             test = requests.get(vault_url)
         except requests.exceptions.SSLError as err:
             cafile = certifi.where()
