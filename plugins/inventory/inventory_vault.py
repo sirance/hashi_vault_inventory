@@ -6,14 +6,14 @@ DOCUMENTATION = '''
     inventory: inventory_vault.py
     author: 
         - Simon Rance <sirance@gmail.com>
-    version_added: "1.0.2"
+    version_added: "1.0.3"
     short_description: Dynamic inventory for using vault with ansible
     description:
         - This inventory uses vault and reads from a KV2 path
     notes:
         - "Dynamic inventory plugin as per https://docs.ansible.com/ansible/2.10/dev_guide/developing_inventory.html"
         - ""
-        - "Env vars 'VAULT_TOKEN', 'VAULT_ADDR', and 'VAULT_CERT' must be set for this inventory to work."
+        - "Env vars 'VAULT_TOKEN' or 'ANSIBLE_HASHI_VAULT_ROLE_ID' & 'ANSIBLE_HASHI_VAULT_SECRET_ID', 'VAULT_ADDR', and 'VAULT_CERT' must be set for this inventory to work."
         - ""
         - "To use this please create a inventory yaml in your repo names 'inventory_vault.yml' with the following example data:"
         - "---"
@@ -54,21 +54,13 @@ class InventoryModule(BaseInventoryPlugin):
         # call base method to ensure properties are available for use with other helper methods
         super(InventoryModule, self).parse(inventory, loader, path, cache)
 
-        # Check env vars are set correctly
         vault_url = os.environ.get('VAULT_ADDR')
-        vault_token = os.environ.get('VAULT_TOKEN')
         vault_cert = os.environ.get('VAULT_CERT')
-        
-
         if vault_url is None:
             raise AnsibleParserError("Please ensure VAULT_ADDR is set in your environment")
 
-        if vault_token is None:
-            raise AnsibleParserError("Please ensure VAULT_TOKEN is set in your environment")
-
         if vault_cert is None:
             raise AnsibleParserError("Please ensure VAULT_CERT is set in your environment")
-
 
         config = self._read_config_data(path)
         if config.get('vault_secret_path', None) is None:
@@ -83,16 +75,41 @@ class InventoryModule(BaseInventoryPlugin):
                 customca = infile.read()
             with open(cafile, 'ab') as outfile:
                 outfile.write(customca)
-                
-        # Connect to vault
-        vault_client = hvac.Client(
-        url=vault_url,
-        )
-        vault_client.token = vault_token
 
-        if not vault_client.is_authenticated():
+        if "VAULT_TOKEN" in os.environ:
+            vault_token = os.environ.get('VAULT_TOKEN')
+            if vault_token is None:
+                raise AnsibleParserError("Please ensure VAULT_TOKEN is set in your environment")
+
+            # Connect to vault
+            vault_client = hvac.Client(
+            url=vault_url,
+            )
+            vault_client.token = vault_token
+            if not vault_client.is_authenticated():
                 error_msg = 'Unable to authenticate to the Vault service'
                 raise hvac.exceptions.Unauthorized(error_msg)
+        elif "ANSIBLE_HASHI_VAULT_ROLE_ID" in os.environ:
+            vault_role_id = os.environ.get('ANSIBLE_HASHI_VAULT_ROLE_ID')
+            vault_secret_id = os.environ.get('ANSIBLE_HASHI_VAULT_SECRET_ID')
+            if vault_role_id is None:
+                raise AnsibleParserError("Please ensure ANSIBLE_HASHI_VAULT_ROLE_ID and ANSIBLE_HASHI_VAULT_SECRET_ID are set in your environment")
+            if vault_secret_id is None:
+                raise AnsibleParserError("Please ensure ANSIBLE_HASHI_VAULT_ROLE_ID and ANSIBLE_HASHI_VAULT_SECRET_ID are set in your environment")
+            
+            # Connect to vault
+            vault_client = hvac.Client(
+                url=vault_url,
+            )
+            vault_client.auth.approle.login(
+                role_id=vault_role_id,
+                secret_id=vault_secret_id
+            )
+            if not vault_client.is_authenticated():
+                error_msg = 'Unable to authenticate to the Vault service'
+                raise hvac.exceptions.Unauthorized(error_msg)
+        else :
+            raise AnsibleParserError("Please ensure VAULT_TOKEN or ANSIBLE_HASHI_VAULT_ROLE_ID and ANSIBLE_HASHI_VAULT_SECRET_ID are set in your environment")
 
         config_vault_mount_point = config['vault_mount_point']
         config_vault_secret_path = config['vault_secret_path']
