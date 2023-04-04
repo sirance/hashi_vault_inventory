@@ -1,24 +1,28 @@
-# hashi_vault_inventory
+# hashi_vault_inventory  - v.1.0.4
 
 A dynamic inventory script for ansible to lookup entries in hashicorp vault
 
 This inventory uses vault and reads from a KV2 path, secrets are added as ansible hosts, key/values in the secrets are added as vars.
 
-- Notes:
+## Usage
 
-  - Dynamic inventory plugin as per [ansible docs](https://docs.ansible.com/ansible/2.10/dev_guide/developing_inventory.html)
+```VAULT_ADDR``` & V```AULT_CACERT``` environment varaible must always be available.
 
-  - Env vars __VAULT_ADDR__, and __VAULT_CERT__ must be set for this inventory to work.
+Available auth methods as follows, along with required variables:
 
-  - If you wish to use a vault token for auth set VAULT_TOEKN environment variable, for approle auth use: __ANSIBLE_HASHI_VAULT_ROLE_ID__ & __ANSIBLE_HASHI_VAULT_SECRET_ID__
-      this should help keep in line with the community.hashi_vault plugins.
+| Auth | Variables |
+| ----|----|
+| Token | ```VAULT_TOKEN```|
+|AppRole | ```ANSIBLE_HASHI_VAULT_ROLE_ID``` and ```ANSIBLE_HASHI_VAULT_SECRET_ID```|
+|JWT | ```ANSIBLE_HASHI_VAULT_JWT``` and  ```ANSIBLE_HASHI_VAULT_JWT_ROLE```|
 
-  - To use this please create a inventory yaml in your repo names 'inventory_vault.yml' with the following example data:
+To use this please create a inventory yaml in your repo names __inventory_vault.yml__ with the following example data:
 
-    ```yaml
-    ---
-    plugin: sirance.inventory_vault.inventory_vault
-    vault_secret_path: <service-contract-name>
-    ```
+```yaml
+---
+plugin: inventory_vault
+vault_mount_point: <kv mount>
+vault_secret_path: <secret path used for inventory>
+```
 
-  - To test use `ansible-inventory -i inventory_vault.yml --graph --vars -v`
+To test use ```ansible-inventory -i inventory_vault.yml --graph --vars -v```

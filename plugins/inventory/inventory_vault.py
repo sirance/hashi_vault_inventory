@@ -6,14 +6,21 @@ DOCUMENTATION = '''
     inventory: inventory_vault.py
     author: 
         - Simon Rance <sirance@gmail.com>
-    version_added: "1.0.3"
+    version_added: "1.0.4"
     short_description: Dynamic inventory for using vault with ansible
     description:
         - This inventory uses vault and reads from a KV2 path
     notes:
-        - "Dynamic inventory plugin as per https://docs.ansible.com/ansible/2.10/dev_guide/developing_inventory.html"
+        - "Dynamic inventory plugin as per https://docs.ansible.com/ansible/latest/dev_guide/developing_inventory.html"
         - ""
-        - "Env vars 'VAULT_TOKEN' or 'ANSIBLE_HASHI_VAULT_ROLE_ID' & 'ANSIBLE_HASHI_VAULT_SECRET_ID', 'VAULT_ADDR', and 'VAULT_CERT' must be set for this inventory to work."
+        - "VAULT_ADDR & VAULT_CACERT environment varaible must always be available."
+        - ""
+        - "Available auth methods as follows, along with required variables."
+        - "Token: 'VAULT_TOKEN'" 
+        - ""
+        - "AppRole: 'ANSIBLE_HASHI_VAULT_ROLE_ID' & 'ANSIBLE_HASHI_VAULT_SECRET_ID'"
+        - ""
+        - "JWT: 'ANSIBLE_HASHI_VAULT_JWT' & 'ANSIBLE_HASHI_VAULT_JWT_ROLE'"
         - ""
         - "To use this please create a inventory yaml in your repo names 'inventory_vault.yml' with the following example data:"
         - "---"
@@ -55,12 +62,12 @@ class InventoryModule(BaseInventoryPlugin):
         super(InventoryModule, self).parse(inventory, loader, path, cache)
 
         vault_url = os.environ.get('VAULT_ADDR')
-        vault_cert = os.environ.get('VAULT_CERT')
+        vault_cert = os.environ.get('VAULT_CACERT')
         if vault_url is None:
             raise AnsibleParserError("Please ensure VAULT_ADDR is set in your environment")
 
         if vault_cert is None:
-            raise AnsibleParserError("Please ensure VAULT_CERT is set in your environment")
+            raise AnsibleParserError("Please ensure VAULT_CACERT is set in your environment")
 
         config = self._read_config_data(path)
         if config.get('vault_secret_path', None) is None:
@@ -104,6 +111,23 @@ class InventoryModule(BaseInventoryPlugin):
             vault_client.auth.approle.login(
                 role_id=vault_role_id,
                 secret_id=vault_secret_id
+            )
+            if not vault_client.is_authenticated():
+                error_msg = 'Unable to authenticate to the Vault service'
+                raise hvac.exceptions.Unauthorized(error_msg)
+        elif "ANSIBLE_HASHI_VAULT_JWT" in os.environ:
+            vault_jwt = os.environ.get('ANSIBLE_HASHI_VAULT_JWT')
+            vault_jwt_role = os.environ.get('ANSIBLE_HASHI_VAULT_JWT_ROLE')
+            if vault_jwt is None:
+                raise AnsibleParserError("Please ensure ANSIBLE_HASHI_VAULT_JWT is set in your environment")
+            if vault_jwt_role is None:
+                raise AnsibleParserError("Please ensure ANSIBLE_HASHI_VAULT_JWT_ROLE is set in your environment")
+            vault_client = hvac.Client(
+                url=vault_url,
+            )
+            vault_client.auth.jwt.jwt_login(
+                role=vault_jwt_role,
+                jwt=vault_jwt
             )
             if not vault_client.is_authenticated():
                 error_msg = 'Unable to authenticate to the Vault service'
