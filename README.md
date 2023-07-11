@@ -1,8 +1,8 @@
-# hashi_vault_inventory  - v.1.0.4
+# hashi_vault_inventory  - v.1.0.5
 
 A dynamic inventory script for ansible to lookup entries in hashicorp vault
 
-This inventory uses vault and reads from a KV2 path, secrets are added as ansible hosts, key/values in the secrets are added as vars.
+This inventory uses vault and reads from a KV2 path, secrets are added as ansible hosts, key/values in the secrets are added as vars. If a key of service exists, the host is also grouped under that value.
 
 ## Usage
 

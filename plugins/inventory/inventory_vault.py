@@ -6,7 +6,7 @@ DOCUMENTATION = '''
     inventory: inventory_vault.py
     author: 
         - Simon Rance <sirance@gmail.com>
-    version_added: "1.0.4"
+    version_added: "1.0.5"
     short_description: Dynamic inventory for using vault with ansible
     description:
         - This inventory uses vault and reads from a KV2 path
@@ -138,6 +138,8 @@ class InventoryModule(BaseInventoryPlugin):
         config_vault_mount_point = config['vault_mount_point']
         config_vault_secret_path = config['vault_secret_path']
         path_group = config_vault_secret_path.split('/')[-1]
+        if '-' in path_group:
+            path_group = path_group.replace('-','_')
         path_group = self.inventory.add_group(path_group)
         list_response = vault_client.secrets.kv.v2.list_secrets(
                 mount_point=config_vault_mount_point, 
@@ -154,4 +156,10 @@ class InventoryModule(BaseInventoryPlugin):
             self.inventory.add_host(hosts)
             for key in list_vars['data']['data'].keys():
                 self.inventory.set_variable(hosts, key, list_vars['data']['data'][key])
+                if key == "services":
+                    for service in list_vars['data']['data'][key].split(';'):
+                        if service == "":
+                            continue
+                        self.inventory.add_group(service)
+                        self.inventory.add_child(service, hosts)
             self.inventory.add_child(path_group, hosts)
